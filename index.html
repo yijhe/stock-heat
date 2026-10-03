@@ -223,7 +223,7 @@ const DEF={
   mode:'hot',
   wHot:{macd:30,rsi:25,kd:20,bias:15,vol:10,div:0,val:0},
   wRev:{macd:15,rsi:20,kd:15,bias:15,vol:5,trig:15,div:10,val:5},
-  win:250,biasN:20,volN:1,macdSrc:'dif',kdSrc:'k',divN:15,valWin:750,alertHot:70,alertRev:70
+  win:250,biasN:20,volN:1,macdSrc:'dif',kdSrc:'k',divN:15,valWin:750,alertHot:70,alertRev:70,fetchYears:5
 };
 function normSettings(s){
   s=s||{};
@@ -305,7 +305,8 @@ async function fetchSeries(code,market){
   let lastErr;
   for(const m of order){
     try{
-      const j=await fetchJSON('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(code)+'.'+m+'?range=5y&interval=1d');
+      const p2=Math.floor(Date.now()/1000),p1=p2-Math.round((settings.fetchYears||5)*365.25*86400);
+      const j=await fetchJSON('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(code)+'.'+m+'?period1='+p1+'&period2='+p2+'&interval=1d');
       const r=j&&j.chart&&j.chart.result&&j.chart.result[0];
       if(!r||!r.timestamp||!r.indicators||!r.indicators.quote){lastErr=new Error('nodata');lastErr.notFound=true;continue;}
       const q=r.indicators.quote[0];
@@ -540,6 +541,8 @@ function setMode(m){
 
 /* ========== 列表畫面 ========== */
 function chgOf(e){return(e.close!=null&&e.prev)?(e.close-e.prev)/e.prev*100:null;}
+function yrsOf(s){return(new Date(s.d[s.d.length-1])-new Date(s.d[0]))/(365.25*864e5);}
+function covLine(e){const s=getSeries(e.code);if(!s||!s.c.length)return '';return '<div class="sub" style="margin-top:4px">已抓取 '+yrsOf(s).toFixed(1)+' 年・'+s.c.length+' 日</div>';}
 function renderSummary(){
   const M=MODES[settings.mode],th=settings[M.alert];
   const sc=list.map(scoreOf).filter(x=>x!=null);
@@ -547,7 +550,7 @@ function renderSummary(){
   const hot=sc.filter(x=>x>=th).length;
   const last=list.reduce((m,e)=>Math.max(m,e.updatedAt||0),0);
   const t=last?new Date(last).toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
-  $('#summary').innerHTML='<div class="stats"><span>候選 <b>'+list.length+'</b></span><span>平均分數 <b>'+(avg==null?'—':avg.toFixed(0))+'</b></span><span>達提醒門檻 <b style="color:'+(hot?'#ef4444':'inherit')+'">'+hot+'</b></span><span>更新 '+t+'</span></div>'
+  $('#summary').innerHTML='<div class="stats"><span>候選 <b>'+list.length+'</b></span><span>平均分數 <b>'+(avg==null?'—':avg.toFixed(0))+'</b></span><span>達提醒門檻 <b style="color:'+(hot?'#ef4444':'inherit')+'">'+hot+'</b></span><span>更新 '+t+'</span><span>抓取範圍 <b>'+settings.fetchYears+' 年</b></span></div>'
    +'<button type="button" data-act="refreshAll" '+(ui.busy||!list.length?'disabled':'')+'>'+(ui.progress||'↻ 全部更新')+'</button>';
 }
 function renderChips(){
@@ -590,7 +593,7 @@ function renderList(){
       +'<div class="s-main"><div class="s-name"><b>'+esc(e.name)+'</b><span class="code">'+esc(e.code)+'</span>'
       +(e.intraday?'<span class="badge">盤中</span>':'')+dvb
       +(sc!=null&&sc>=settings[M.alert]?'<span class="badge warn">達提醒</span>':'')+'</div>'
-      +'<div class="s-price"><span class="px">'+(e.close!=null?fmt(e.close):'—')+'</span><span class="'+cls+'">'+(ch==null?'':(ch>0?'▲ ':ch<0?'▼ ':'')+Math.abs(ch).toFixed(2)+'%')+'</span></div>'+mini+'</div>'
+      +'<div class="s-price"><span class="px">'+(e.close!=null?fmt(e.close):'—')+'</span><span class="'+cls+'">'+(ch==null?'':(ch>0?'▲ ':ch<0?'▼ ':'')+Math.abs(ch).toFixed(2)+'%')+'</span></div>'+mini+covLine(e)+'</div>'
       +(z?'<div class="s-heat" style="--c:'+z.color+'"><div class="num">'+Math.round(sc)+'</div><div class="zn">'+z.name+'</div></div>'
          :'<div class="s-heat" style="--c:#9ca3af"><div class="num">—</div><div class="zn">無資料</div></div>')
       +'<button class="x '+(pend?'danger':'')+'" type="button" data-act="del" data-code="'+esc(e.code)+'">'+(pend?'確定刪除':'✕')+'</button></div>';
@@ -676,7 +679,7 @@ function renderDetail(){
   const w=normW(mode),W=st[M.w];
 
   h+='<div class="card"><div class="dhead"><div><input id="nameIn" class="nameIn" value="'+esc(e.name)+'">'
-   +'<div class="sub">'+esc(e.code)+(e.market?' · '+(e.market==='TWO'?'上櫃':'上市'):'')+' · 資料至 '+esc(s.d[i])+'（共 '+n+' 日）'+(e.intraday?' <span class="badge">盤中・量能未完整</span>':'')+'</div>'
+   +'<div class="sub">'+esc(e.code)+(e.market?' · '+(e.market==='TWO'?'上櫃':'上市'):'')+' · 資料至 '+esc(s.d[i])+'（約 '+yrsOf(s).toFixed(1)+' 年・'+n+' 日）'+(e.intraday?' <span class="badge">盤中・量能未完整</span>':'')+'</div>'
    +'<div style="margin-top:8px"><span class="bigprice">'+fmt(s.c[i])+'</span> <span class="'+cls+'" style="font-weight:600">'+(ch==null?'':(ch>0?'▲ ':ch<0?'▼ ':'')+Math.abs(s.c[i]-s.c[i-1]).toFixed(2)+'（'+Math.abs(ch).toFixed(2)+'%）')+'</span></div></div>';
   if(res){
     const th=st[M.alert];
@@ -819,17 +822,17 @@ function openSettings(){
    +'<div><label>乖離率均線天數</label><input type="number" id="s_biasN" value="'+settings.biasN+'" min="5" max="120" inputmode="numeric"></div>'
    +'<div><label>量能平滑（1=當日量）</label><input type="number" id="s_volN" value="'+settings.volN+'" min="1" max="20" inputmode="numeric"></div>'
    +'<div><label>背離比較區間（日）</label><input type="number" id="s_divN" value="'+settings.divN+'" min="5" max="40" inputmode="numeric"></div>'
-   +'<div></div>'
+   +'<div><label>抓取歷史範圍（下次更新生效）</label><select id="s_fetch">'+[1,2,3,5,10].map(y=>'<option value="'+y+'" '+(settings.fetchYears===y?'selected':'')+'>'+y+' 年</option>').join('')+'</select></div>'
    +'<div><label>過熱提醒門檻</label><input type="number" id="s_alertHot" value="'+settings.alertHot+'" min="1" max="100" inputmode="numeric"></div>'
    +'<div><label>反轉提醒門檻</label><input type="number" id="s_alertRev" value="'+settings.alertRev+'" min="1" max="100" inputmode="numeric"></div>'
    +'<div><label>MACD 採用</label><select id="s_macd"><option value="dif" '+(settings.macdSrc==='dif'?'selected':'')+'>DIF 快線</option><option value="osc" '+(settings.macdSrc==='osc'?'selected':'')+'>OSC 柱狀體</option></select></div>'
    +'<div><label>KD 採用</label><select id="s_kd"><option value="k" '+(settings.kdSrc==='k'?'selected':'')+'>K 值</option><option value="avg" '+(settings.kdSrc==='avg'?'selected':'')+'>(K+D)/2</option></select></div>'
-   +'</div><p class="note">權重總和不必剛好 100，系統會自動按比例標準化。</p><div id="setMsg" class="msg err"></div>'
+   +'</div><p class="note">權重總和不必剛好 100，系統會自動按比例標準化。抓取範圍越長，占用的瀏覽器儲存空間越多；百分位視窗與價格位階視窗不應超過實際資料天數（1 年約 245 個交易日），建議至少抓 2 年。</p><div id="setMsg" class="msg err"></div>'
    +'<div class="mact"><button type="button" data-act="resetSet">還原預設</button><button type="button" data-act="modalClose">取消</button><button class="primary" type="button" data-act="saveSet">儲存</button></div>');
 }
 function saveSettings(){
   const v=id=>parseFloat($('#'+id).value);
-  const ns=Object.assign({},settings,{wHot:{},wRev:{},win:Math.round(v('s_win')),valWin:Math.round(v('s_valWin')),biasN:Math.round(v('s_biasN')),volN:Math.round(v('s_volN')),divN:Math.round(v('s_divN')),alertHot:v('s_alertHot'),alertRev:v('s_alertRev'),macdSrc:$('#s_macd').value,kdSrc:$('#s_kd').value});
+  const ns=Object.assign({},settings,{wHot:{},wRev:{},win:Math.round(v('s_win')),valWin:Math.round(v('s_valWin')),biasN:Math.round(v('s_biasN')),volN:Math.round(v('s_volN')),divN:Math.round(v('s_divN')),alertHot:v('s_alertHot'),alertRev:v('s_alertRev'),fetchYears:v('s_fetch'),macdSrc:$('#s_macd').value,kdSrc:$('#s_kd').value});
   const err=t=>{$('#setMsg').textContent=t;};
   for(const pair of [['hot','wh_','wHot'],['rev','wr_','wRev']]){
     let sum=0;
@@ -842,7 +845,7 @@ function saveSettings(){
   if(!(ns.volN>=1&&ns.volN<=20)){err('量能平滑請設在 1～20');return;}
   if(!(ns.divN>=5&&ns.divN<=40)){err('背離比較區間請設在 5～40');return;}
   if(!(ns.alertHot>=1&&ns.alertHot<=100&&ns.alertRev>=1&&ns.alertRev<=100)){err('提醒門檻請設在 1～100');return;}
-  settings=ns;store.set('oh_settings',settings);recomputeAll();closeModal();toast('設定已儲存並重新計算');
+  const fy=settings.fetchYears;settings=ns;store.set('oh_settings',settings);recomputeAll();closeModal();toast(fy!==ns.fetchYears?'設定已儲存。按「全部更新」後才會依新的抓取範圍重新抓資料':'設定已儲存並重新計算');
   ui.detail?renderDetail():renderList();
 }
 function openData(){
