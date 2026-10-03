@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>過熱雷達｜個股過熱分數</title>
+<style>
+:root{--bg:#f3f5f9;--card:#fff;--text:#111827;--sub:#6b7280;--line:#e5e7eb;--accent:#2563eb;--up:#e11d48;--down:#059669;--shadow:0 1px 3px rgba(0,0,0,.08);--inp:#f9fafb}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1014;--card:#181b22;--text:#e5e7eb;--sub:#9ca3af;--line:#2a2f3a;--accent:#60a5fa;--up:#fb7185;--down:#34d399;--shadow:none;--inp:#11141a}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;font-size:15px;line-height:1.5}
+.wrap{max-width:780px;margin:0 auto;padding:14px 14px 60px}
+h1{font-size:22px;margin:0}
+.sub{color:var(--sub);font-size:12.5px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+.hbtns{display:flex;gap:6px}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 14px}
+button:disabled{opacity:.5;cursor:default}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.ghost{background:transparent}
+button.danger{background:#ef4444;border-color:#ef4444;color:#fff}
+input,textarea,select{font:inherit;color:var(--text);background:var(--inp);border:1px solid var(--line);border-radius:10px;padding:9px 12px;width:100%;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:80px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px}
+.row{display:flex;gap:8px;align-items:center}
+.msg{font-size:13px;margin-top:8px;min-height:18px;color:var(--sub)}
+.msg.err{color:var(--up)}
+.summary{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:4px 2px 10px}
+.stats{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--sub)}
+.stats b{color:var(--text);font-size:15px}
+.toolbar{display:grid;grid-template-columns:1fr 130px;gap:8px;margin-bottom:8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{padding:5px 11px;border-radius:999px;font-size:13px;border:1px solid var(--line);background:var(--card);cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.stock{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 12px 12px 14px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow);position:relative}
+.stock:active{transform:scale(.995)}
+.s-main{flex:1;min-width:0}
+.s-name{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.s-name b{font-size:16px}
+.code{color:var(--sub);font-size:13px}
+.badge{font-size:11px;padding:1px 7px;border-radius:999px;background:#fef3c7;color:#92400e}
+.badge.warn{background:#fee2e2;color:#b91c1c}
+.s-price{margin-top:2px}
+.px{font-weight:600;margin-right:8px}
+.up{color:var(--up)}.down{color:var(--down)}.flat{color:var(--sub)}
+.mini{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.mini span{font-size:11.5px;color:var(--sub);background:var(--inp);border:1px solid var(--line);border-radius:6px;padding:0 6px}
+.s-heat{width:64px;text-align:center;border-radius:12px;padding:6px 0;background:color-mix(in srgb,var(--c) 15%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
+.s-heat .num{font-size:24px;font-weight:800;color:var(--c);line-height:1.1}
+.s-heat .zn{font-size:11.5px;color:var(--c);font-weight:600}
+.x{padding:4px 8px;font-size:12px;color:var(--sub);border-radius:8px}
+.empty{text-align:center;color:var(--sub);padding:34px 10px}
+.foot{color:var(--sub);font-size:12px;text-align:center;margin-top:20px}
+/* detail */
+.dtop{display:flex;justify-content:space-between;margin-bottom:10px}
+.dhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.nameIn{font-size:20px;font-weight:700;padding:2px 6px;border-color:transparent;background:transparent;width:auto;max-width:100%}
+.nameIn:hover,.nameIn:focus{border-color:var(--line);background:var(--inp)}
+.bigprice{font-size:26px;font-weight:700}
+.heatbox{text-align:center}
+.heatnum{font-size:54px;font-weight:800;line-height:1}
+.heatzone{font-size:16px;font-weight:700;margin-top:2px}
+.track{display:flex;height:12px;border-radius:999px;overflow:hidden;position:relative;margin:18px 0 6px}
+.track i{display:block;height:100%}
+.marker{position:absolute;top:-6px;width:4px;height:24px;background:var(--text);border-radius:2px;transform:translateX(-50%);box-shadow:0 0 0 2px var(--card)}
+.scale{display:flex;justify-content:space-between;font-size:11px;color:var(--sub)}
+.sec{font-size:15px;font-weight:700;margin:0 0 10px}
+.contrib{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--inp);border:1px solid var(--line)}
+.contrib i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:12px;color:var(--sub)}
+.legend em{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;font-style:normal}
+.comp{border-top:1px solid var(--line);padding:12px 0}
+.comp:first-of-type{border-top:0}
+.comp-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.comp-h b{font-size:15px}
+.comp-sc{font-weight:800;font-size:18px}
+.comp-w{font-size:12px;color:var(--sub)}
+.sbar{height:8px;border-radius:6px;background:var(--inp);border:1px solid var(--line);margin:6px 0;overflow:hidden}
+.sbar i{display:block;height:100%;border-radius:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px 12px;margin-top:6px}
+.grid div{font-size:12.5px;color:var(--sub)}
+.grid b{display:block;color:var(--text);font-size:14px;font-weight:600}
+.note{font-size:12.5px;color:var(--sub);margin-top:4px}
+.tabs{display:flex;gap:6px;margin-bottom:8px}
+.chartbox{position:relative}
+svg.ch{width:100%;height:auto;display:block;touch-action:pan-y;user-select:none}
+.tip{position:absolute;top:0;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.15);white-space:nowrap;display:none}
+.gl{stroke:var(--line);stroke-width:1}
+.tx{fill:var(--sub);font-size:11px}
+.l-price{stroke:var(--text);fill:none;stroke-width:1.6}
+.l-ma20{stroke:#f59e0b;fill:none;stroke-width:1.2}
+.l-ma60{stroke:#8b5cf6;fill:none;stroke-width:1.2}
+.l-heat{stroke:#ef4444;fill:none;stroke-width:1.8}
+.cl{stroke:var(--sub);stroke-width:1;stroke-dasharray:3 3}
+.lg{display:flex;gap:12px;font-size:12px;color:var(--sub);margin:4px 0 0 4px;flex-wrap:wrap}
+.lg em{display:inline-block;width:14px;height:3px;margin-right:4px;vertical-align:middle;font-style:normal}
+details summary{cursor:pointer;font-weight:600}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+.overlay[hidden]{display:none}
+.modal{background:var(--card);width:100%;max-width:560px;max-height:90vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px}
+@media(min-width:600px){.overlay{align-items:center}.modal{border-radius:18px}}
+.modal h2{margin:0 0 12px;font-size:18px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fgrid label{font-size:12.5px;color:var(--sub);display:block;margin-bottom:3px}
+.mact{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:99;max-width:90vw;text-align:center}
+#toast.show{opacity:.95}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="listView">
+    <header class="top">
+      <div>
+        <h1>🌡️ 過熱雷達</h1>
+        <div class="sub">以個股自身近 250 日歷史百分位計算過熱分數</div>
+      </div>
+      <div class="hbtns">
+        <button class="ghost" data-act="dataOpen" type="button">備份</button>
+        <button class="ghost" data-act="setOpen" type="button">設定</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="row">
+        <input id="codeIn" placeholder="輸入股票代號，如 2330、0050" maxlength="8" autocomplete="off" autocapitalize="characters">
+        <button id="btnAdd" class="primary" data-act="add" type="button" style="white-space:nowrap">加入</button>
+      </div>
+      <div id="addMsg" class="msg"></div>
+      <div id="addExtra"></div>
+    </section>
+
+    <section id="summary" class="summary"></section>
+
+    <section class="toolbar">
+      <input id="searchIn" placeholder="搜尋代號或名稱" autocomplete="off">
+      <select id="sortSel">
+        <option value="heat">過熱分數 高→低</option>
+        <option value="heatAsc">過熱分數 低→高</option>
+        <option value="code">代號</option>
+        <option value="chg">漲跌幅 高→低</option>
+        <option value="added">加入時間 新→舊</option>
+      </select>
+    </section>
+    <div id="chips" class="chips"></div>
+    <div id="cards"></div>
+    <div class="foot">指標僅為歷史資料的統計呈現，不構成任何投資建議。<br>資料來源：證交所／櫃買中心 OpenAPI、Yahoo 財經（可能延遲或有誤）</div>
+  </div>
+
+  <div id="detailView" hidden></div>
+</div>
+
+<div id="modal" class="overlay" hidden><div class="modal" id="modalBody"></div></div>
+<div id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ========== 基本工具 ========== */
+const $=(s,r)=>(r||document).querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const fmt=(x,d)=>{d=d==null?2:d;return(x==null||!isFinite(x))?'—':Number(x).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});};
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+const store=(function(){
+  const mem={};
+  return{
+    get(k,d){ if(k in mem) return mem[k]; try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;} },
+    set(k,v){ try{localStorage.setItem(k,JSON.stringify(v));delete mem[k];}catch(e){mem[k]=v;} },
+    del(k){ delete mem[k]; try{localStorage.removeItem(k);}catch(e){} }
+  };
+})();
+
+let toastTimer=null;
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+/* ========== 常數與設定 ========== */
+const ZONES=[
+  {max:30,key:'cold',name:'偏冷',color:'#3b82f6',desc:'多項指標處於自身歷史低檔，動能與量能都不熱。'},
+  {max:50,key:'mild',name:'溫和',color:'#10b981',desc:'位於自身歷史中段偏低，尚無過熱跡象。'},
+  {max:65,key:'warm',name:'升溫',color:'#eab308',desc:'多項指標轉強，留意是否持續升高。'},
+  {max:80,key:'hot',name:'偏熱',color:'#f97316',desc:'多數指標已在自身歷史高檔，追價風險增加。'},
+  {max:101,key:'overheat',name:'過熱',color:'#ef4444',desc:'指標集中於自身歷史極端高檔，短線過熱風險偏高。'}
+];
+const zoneOf=s=>ZONES.find(z=>s<z.max)||ZONES[ZONES.length-1];
+const COMPS=[
+  {k:'macd',name:'MACD',color:'#8b5cf6'},
+  {k:'rsi',name:'RSI(14)',color:'#06b6d4'},
+  {k:'kd',name:'KD(9,3,3)',color:'#f59e0b'},
+  {k:'bias',name:'乖離率',color:'#ec4899'},
+  {k:'vol',name:'量能',color:'#64748b'}
+];
+const SHORT={macd:'MACD',rsi:'RSI',kd:'KD',bias:'乖離',vol:'量'};
+const DEF={w:{macd:30,rsi:25,kd:20,bias:15,vol:10},win:250,biasN:20,volN:1,macdSrc:'dif',kdSrc:'k',hot:70};
+function loadSettings(){const s=store.get('oh_settings',{})||{};return Object.assign({},DEF,s,{w:Object.assign({},DEF.w,s.w||{})});}
+let settings=loadSettings();
+let list=store.get('oh_list',[])||[];
+const ui={sort:'heat',filter:'all',q:'',range:120,busy:false,detail:null,pendingDel:null,progress:''};
+const saveList=()=>store.set('oh_list',list);
+
+/* ========== 資料取得 ========== */
+let route=0;
+const ROUTES=[
+  u=>u,
+  u=>'https://corsproxy.io/?url='+encodeURIComponent(u),
+  u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
+  u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u)
+];
+async function fetchJSON(url){
+  let last;
+  for(let t=0;t<ROUTES.length;t++){
+    const idx=(route+t)%ROUTES.length;
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),15000);
+    try{
+      const r=await fetch(ROUTES[idx](url),{signal:ctrl.signal,cache:'no-store'});
+      clearTimeout(timer);
+      if(r.status===404){const er=new Error('not found');er.notFound=true;throw er;}
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const j=await r.json(); route=idx; return j;
+    }catch(e){clearTimeout(timer); if(e.notFound) throw e; last=e;}
+  }
+  throw last||new Error('fetch failed');
+}
+
+let names=null;
+async function loadNames(){
+  if(names) return names;
+  const c=store.get('oh_names',null);
+  if(c&&c.m&&Date.now()-c.t<7*864e5&&Object.keys(c.m).length>500){names=c.m;return names;}
+  const m={};
+  const res=await Promise.allSettled([
+    fetchJSON('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL'),
+    fetchJSON('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes')
+  ]);
+  if(res[0].status==='fulfilled'&&Array.isArray(res[0].value)) res[0].value.forEach(r=>{if(r.Code&&r.Name)m[String(r.Code).trim()]={n:String(r.Name).trim(),m:'TW'};});
+  if(res[1].status==='fulfilled'&&Array.isArray(res[1].value)) res[1].value.forEach(r=>{const c=r.SecuritiesCompanyCode||r.Code;const n=r.CompanyName||r.Name;if(c&&n)m[String(c).trim()]={n:String(n).trim(),m:'TWO'};});
+  if(Object.keys(m).length>0){names=m;store.set('oh_names',{t:Date.now(),m});return m;}
+  return {};
+}
+
+async function fetchSeries(code,market){
+  const order=market?[market,market==='TW'?'TWO':'TW']:['TW','TWO'];
+  let lastErr;
+  for(const m of order){
+    try{
+      const j=await fetchJSON('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(code)+'.'+m+'?range=2y&interval=1d');
+      const r=j&&j.chart&&j.chart.result&&j.chart.result[0];
+      if(!r||!r.timestamp||!r.indicators||!r.indicators.quote){lastErr=new Error('nodata');lastErr.notFound=true;continue;}
+      const q=r.indicators.quote[0];
+      const s={d:[],o:[],h:[],l:[],c:[],v:[]};
+      const rd=x=>Math.round(x*100)/100;
+      r.timestamp.forEach((ts,i)=>{
+        if(q.close[i]==null||q.high[i]==null||q.low[i]==null) return;
+        s.d.push(new Date((ts+28800)*1000).toISOString().slice(0,10));
+        s.o.push(rd(q.open[i]==null?q.close[i]:q.open[i]));
+        s.h.push(rd(q.high[i]));s.l.push(rd(q.low[i]));s.c.push(rd(q.close[i]));
+        s.v.push(Math.round(q.volume[i]||0));
+      });
+      if(s.c.length<30){lastErr=new Error('nodata');lastErr.notFound=true;continue;}
+      return{series:s,market:m,name:r.meta&&(r.meta.shortName||r.meta.longName)};
+    }catch(e){lastErr=e;if(!e.notFound)break;}
+  }
+  throw lastErr||new Error('fail');
+}
+
+const sCache={};
+function getSeries(code){
+  if(sCache[code]) return sCache[code];
+  const s=store.get('oh_s_'+code,null);
+  if(s&&s.c&&s.c.length) sCache[code]=s;
+  return sCache[code]||null;
+}
+function putSeries(code,s){sCache[code]=s;store.set('oh_s_'+code,s);}
+
+function isIntraday(lastDate){
+  const t=new Date(Date.now()+8*3600e3);
+  const today=t.toISOString().slice(0,10);
+  const mins=t.getUTCHours()*60+t.getUTCMinutes();
+  const dow=t.getUTCDay();
+  return lastDate===today&&dow>=1&&dow<=5&&mins>=9*60&&mins<13*60+35;
+}
+
+/* ========== 指標計算 ========== */
+function ema(a,n){const k=2/(n+1),o=[];let p=a[0];for(let i=0;i<a.length;i++){p=i===0?a[0]:a[i]*k+p*(1-k);o.push(p);}return o;}
+function smaArr(a,n){const o=Array(a.length).fill(NaN);let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=n)s-=a[i-n];if(i>=n-1)o[i]=s/n;}return o;}
+function rsiCalc(c,n){
+  const o=Array(c.length).fill(NaN);if(c.length<=n)return o;
+  let g=0,l=0;for(let i=1;i<=n;i++){const d=c[i]-c[i-1];if(d>=0)g+=d;else l-=d;}
+  let ag=g/n,al=l/n;o[n]=al===0?100:100-100/(1+ag/al);
+  for(let i=n+1;i<c.length;i++){const d=c[i]-c[i-1];ag=(ag*(n-1)+Math.max(d,0))/n;al=(al*(n-1)+Math.max(-d,0))/n;o[i]=al===0?100:100-100/(1+ag/al);}
+  return o;
+}
+function kdCalc(h,l,c,n){
+  const K=Array(c.length).fill(NaN),D=K.slice(),R=K.slice();let k=50,d=50;
+  for(let i=n-1;i<c.length;i++){
+    let lo=Infinity,hi=-Infinity;for(let j=i-n+1;j<=i;j++){if(l[j]<lo)lo=l[j];if(h[j]>hi)hi=h[j];}
+    const rsv=hi===lo?50:(c[i]-lo)/(hi-lo)*100;
+    k=k*2/3+rsv/3;d=d*2/3+k/3;K[i]=k;D[i]=d;R[i]=rsv;
+  }
+  return{K,D,R};
+}
+function computeInd(s,st){
+  const c=s.c,n=c.length;
+  const e12=ema(c,12),e26=ema(c,26);
+  const dif=c.map((_,i)=>e12[i]-e26[i]);
+  const dea=ema(dif,9);
+  const osc=dif.map((x,i)=>x-dea[i]);
+  const macdSeries=(st.macdSrc==='osc'?osc:dif).map((x,i)=>i<34?NaN:x);
+  const rsi=rsiCalc(c,14);
+  const kd=kdCalc(s.h,s.l,c,9);
+  const maB=smaArr(c,st.biasN);
+  const bias=c.map((x,i)=>isFinite(maB[i])?(x-maB[i])/maB[i]*100:NaN);
+  const vs=st.volN<=1?s.v.slice():smaArr(s.v,st.volN);
+  return{n,dif,dea,osc,macdSeries,rsi,K:kd.K,D:kd.D,R:kd.R,maB,bias,vs,ma20:smaArr(c,20),ma60:smaArr(c,60),vma20:smaArr(s.v,20)};
+}
+function pctRank(arr,i,win){
+  const cur=arr[i];if(!isFinite(cur))return NaN;
+  let less=0,eq=0,n=0;
+  for(let j=Math.max(0,i-win+1);j<=i;j++){const x=arr[j];if(!isFinite(x))continue;n++;if(x<cur)less++;else if(x===cur)eq++;}
+  return n?(less+0.5*eq)/n*100:NaN;
+}
+function winInfo(arr,i,win){
+  let mn=Infinity,mx=-Infinity,n=0;
+  for(let j=Math.max(0,i-win+1);j<=i;j++){const x=arr[j];if(!isFinite(x))continue;n++;if(x<mn)mn=x;if(x>mx)mx=x;}
+  return{min:mn,max:mx,n};
+}
+function scoreAt(ind,i,st){
+  const comps={
+    macd:{raw:ind.macdSeries[i],score:pctRank(ind.macdSeries,i,st.win)},
+    rsi:{raw:ind.rsi[i],score:ind.rsi[i]},
+    kd:{raw:ind.K[i],score:st.kdSrc==='avg'?(ind.K[i]+ind.D[i])/2:ind.K[i]},
+    bias:{raw:ind.bias[i],score:pctRank(ind.bias,i,st.win)},
+    vol:{raw:ind.vs[i],score:pctRank(ind.vs,i,st.win)}
+  };
+  let sw=0,sum=0;
+  for(const c of COMPS){
+    const x=comps[c.k].score;if(!isFinite(x))return null;
+    comps[c.k].score=clamp(x,0,100);
+    const w=st.w[c.k];sw+=w;sum+=w*comps[c.k].score;
+  }
+  if(sw<=0)return null;
+  return{total:sum/sw,comps};
+}
+function applySummary(e){
+  const s=getSeries(e.code);
+  if(!s||s.c.length<2){e.score=null;e.comps=null;return;}
+  const n=s.c.length;
+  e.close=s.c[n-1];e.prev=s.c[n-2];e.date=s.d[n-1];e.intraday=isIntraday(s.d[n-1]);
+  if(n<60){e.score=null;e.comps=null;return;}
+  const r=scoreAt(computeInd(s,settings),n-1,settings);
+  if(r){e.score=r.total;e.comps={};COMPS.forEach(c=>e.comps[c.k]=r.comps[c.k].score);}
+  else{e.score=null;e.comps=null;}
+}
+function recomputeAll(){list.forEach(applySummary);saveList();}
+
+/* ========== 新增 / 更新 ========== */
+async function addStock(){
+  const inp=$('#codeIn');
+  const code=inp.value.trim().toUpperCase();
+  const msg=$('#addMsg'),extra=$('#addExtra');
+  extra.innerHTML='';msg.className='msg';
+  if(!/^[0-9A-Z]{4,8}$/.test(code)){msg.className='msg err';msg.textContent='請輸入正確的股票代號（例如 2330、0050、00878）';return;}
+  if(list.some(e=>e.code===code)){msg.textContent='已在清單中，已為你開啟。';inp.value='';openDetail(code);return;}
+  if(ui.busy)return;
+  ui.busy=true;$('#btnAdd').disabled=true;msg.textContent='查詢中…（首次需載入股票名稱與兩年歷史資料）';
+  let nm=null;
+  try{const m=await loadNames();nm=m[code]||null;}catch(e){}
+  try{
+    const r=await fetchSeries(code,nm?nm.m:null);
+    putSeries(code,r.series);
+    const e={code,name:(nm&&nm.n)||r.name||code,market:r.market,addedAt:Date.now(),note:'',updatedAt:Date.now()};
+    applySummary(e);
+    e.addPrice=e.close;e.addScore=e.score;
+    list.unshift(e);saveList();
+    inp.value='';msg.textContent='';
+    toast('已加入 '+e.name);
+    renderList();
+  }catch(err){
+    msg.className='msg err';
+    msg.textContent=err&&err.notFound?'查不到這個代號，請確認是否為上市／上櫃股票或 ETF。':'目前無法取得資料（可能是網路或跨網域限制）。可稍後再試，或先加入後手動貼入歷史資料。';
+    extra.innerHTML='<button type="button" data-act="addManual" data-code="'+esc(code)+'" style="margin-top:8px">先不含資料加入 '+esc(code)+'</button>';
+  }
+  ui.busy=false;$('#btnAdd').disabled=false;
+}
+function addManual(code){
+  if(list.some(e=>e.code===code))return;
+  const nm=names&&names[code];
+  list.unshift({code,name:(nm&&nm.n)||code,market:nm?nm.m:null,addedAt:Date.now(),note:'',updatedAt:Date.now(),score:null,comps:null});
+  saveList();$('#addExtra').innerHTML='';$('#addMsg').textContent='';$('#codeIn').value='';
+  openDetail(code);
+}
+async function refreshEntry(e){
+  const r=await fetchSeries(e.code,e.market);
+  putSeries(e.code,r.series);e.market=r.market;
+  if((!e.name||e.name===e.code)&&r.name)e.name=r.name;
+  const hadNone=e.addPrice==null;
+  applySummary(e);
+  if(hadNone){e.addPrice=e.close;e.addScore=e.score;}
+  e.updatedAt=Date.now();
+}
+async function refreshAll(){
+  if(ui.busy||!list.length)return;
+  ui.busy=true;let ok=0,fail=0;
+  for(let i=0;i<list.length;i++){
+    ui.progress='更新中 '+(i+1)+'/'+list.length+'…';renderSummary();
+    try{await refreshEntry(list[i]);ok++;}catch(e){fail++;}
+    saveList();await sleep(250);
+  }
+  ui.busy=false;ui.progress='';renderList();
+  toast('更新完成：成功 '+ok+' 檔'+(fail?'，失敗 '+fail+' 檔':''));
+}
+async function refreshOne(){
+  const e=list.find(x=>x.code===ui.detail);if(!e||ui.busy)return;
+  ui.busy=true;renderDetail();
+  try{await refreshEntry(e);saveList();toast('已更新');}catch(err){toast('更新失敗，請稍後再試');}
+  ui.busy=false;renderDetail();
+}
+
+/* ========== 列表畫面 ========== */
+function chgOf(e){return(e.close!=null&&e.prev)?(e.close-e.prev)/e.prev*100:null;}
+function renderSummary(){
+  const sc=list.filter(e=>e.score!=null);
+  const avg=sc.length?sc.reduce((a,e)=>a+e.score,0)/sc.length:null;
+  const hot=sc.filter(e=>e.score>=settings.hot).length;
+  const last=list.reduce((m,e)=>Math.max(m,e.updatedAt||0),0);
+  const t=last?new Date(last).toLocaleString('zh-TW',{hour12:false,month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+  $('#summary').innerHTML='<div class="stats"><span>候選 <b>'+list.length+'</b></span><span>平均熱度 <b>'+(avg==null?'—':avg.toFixed(0))+'</b></span><span>達提醒門檻 <b style="color:'+(hot?'#ef4444':'inherit')+'">'+hot+'</b></span><span>更新 '+t+'</span></div>'
+   +'<button type="button" data-act="refreshAll" '+(ui.busy||!list.length?'disabled':'')+'>'+(ui.progress||'↻ 全部更新')+'</button>';
+}
+function renderChips(){
+  const items=[['all','全部']].concat(ZONES.map(z=>[z.key,z.name]));
+  $('#chips').innerHTML=items.map(i=>'<span class="chip '+(ui.filter===i[0]?'on':'')+'" data-act="filter" data-f="'+i[0]+'">'+i[1]+'</span>').join('');
+}
+function visibleList(){
+  const q=ui.q.trim().toLowerCase();
+  let a=list.filter(e=>{
+    if(q&&!(e.code.toLowerCase().includes(q)||(e.name||'').toLowerCase().includes(q)))return false;
+    if(ui.filter!=='all'){if(e.score==null)return false;if(zoneOf(e.score).key!==ui.filter)return false;}
+    return true;
+  });
+  const sv=e=>e.score==null?-1:e.score;
+  if(ui.sort==='heat')a.sort((x,y)=>sv(y)-sv(x));
+  else if(ui.sort==='heatAsc')a.sort((x,y)=>(x.score==null?999:x.score)-(y.score==null?999:y.score));
+  else if(ui.sort==='code')a.sort((x,y)=>x.code.localeCompare(y.code));
+  else if(ui.sort==='chg')a.sort((x,y)=>(chgOf(y)==null?-999:chgOf(y))-(chgOf(x)==null?-999:chgOf(x)));
+  else a.sort((x,y)=>(y.addedAt||0)-(x.addedAt||0));
+  return a;
+}
+function renderList(){
+  renderSummary();renderChips();
+  const a=visibleList();
+  if(!list.length){$('#cards').innerHTML='<div class="empty">還沒有候選股票<br>在上方輸入代號開始建立清單</div>';return;}
+  if(!a.length){$('#cards').innerHTML='<div class="empty">沒有符合條件的股票</div>';return;}
+  $('#cards').innerHTML=a.map(e=>{
+    const z=e.score!=null?zoneOf(e.score):null;
+    const ch=chgOf(e);
+    const cls=ch==null?'flat':ch>0?'up':ch<0?'down':'flat';
+    const mini=e.comps?'<div class="mini">'+COMPS.map(c=>'<span>'+SHORT[c.k]+' '+Math.round(e.comps[c.k])+'</span>').join('')+'</div>':'';
+    const pend=ui.pendingDel===e.code;
+    return '<div class="stock" data-act="open" data-code="'+esc(e.code)+'">'
+      +'<div class="s-main"><div class="s-name"><b>'+esc(e.name)+'</b><span class="code">'+esc(e.code)+'</span>'
+      +(e.intraday?'<span class="badge">盤中</span>':'')
+      +(e.score!=null&&e.score>=settings.hot?'<span class="badge warn">達提醒</span>':'')+'</div>'
+      +'<div class="s-price"><span class="px">'+(e.close!=null?fmt(e.close):'—')+'</span><span class="'+cls+'">'+(ch==null?'':(ch>0?'▲ ':ch<0?'▼ ':'')+Math.abs(ch).toFixed(2)+'%')+'</span></div>'+mini+'</div>'
+      +(z?'<div class="s-heat" style="--c:'+z.color+'"><div class="num">'+Math.round(e.score)+'</div><div class="zn">'+z.name+'</div></div>'
+         :'<div class="s-heat" style="--c:#9ca3af"><div class="num">—</div><div class="zn">無資料</div></div>')
+      +'<button class="x '+(pend?'danger':'')+'" type="button" data-act="del" data-code="'+esc(e.code)+'">'+(pend?'確定刪除':'✕')+'</button></div>';
+  }).join('');
+}
+function deleteStock(code,fromDetail){
+  if(ui.pendingDel!==code){
+    ui.pendingDel=code;
+    setTimeout(()=>{if(ui.pendingDel===code){ui.pendingDel=null;fromDetail?renderDetail():renderList();}},3000);
+    fromDetail?renderDetail():renderList();return;
+  }
+  list=list.filter(e=>e.code!==code);store.del('oh_s_'+code);delete sCache[code];
+  ui.pendingDel=null;saveList();toast('已刪除 '+code);
+  if(fromDetail)showList();else renderList();
+}
+
+/* ========== 個股詳情 ========== */
+function openDetail(code){ui.detail=code;ui.range=120;ui.pendingDel=null;$('#listView').hidden=true;$('#detailView').hidden=false;renderDetail();window.scrollTo(0,0);}
+function showList(){ui.detail=null;ui.pendingDel=null;$('#detailView').hidden=true;$('#listView').hidden=false;renderList();}
+
+function manualPanel(code){
+  return '<div class="card"><details><summary>手動貼入歷史資料（自動抓取失敗時使用）</summary>'
+   +'<p class="note">每行一筆：日期,開,高,低,收,成交股數。日期可用 2026-10-03、2026/10/03 或民國 115/10/03，至少 60 筆（建議 300 筆以上）。</p>'
+   +'<textarea id="manualTa" placeholder="2026-10-02,1040,1055,1035,1050,25000000"></textarea>'
+   +'<div class="mact"><button class="primary" type="button" data-act="manualImport" data-code="'+esc(code)+'">匯入並計算</button></div></details></div>';
+}
+function parseManual(text){
+  const rows=[];
+  text.split(/\r?\n/).forEach(line=>{
+    if(!line.trim())return;
+    const parts=[];const re=/"([^"]*)"|([^,\t;]+)/g;let m;
+    while((m=re.exec(line))){parts.push((m[1]!=null?m[1]:m[2]).replace(/,/g,'').trim());}
+    if(parts.length<6)return;
+    let d=parts[0].replace(/\//g,'-');const dp=d.split('-');
+    if(dp.length!==3)return;
+    let y=parseInt(dp[0],10);if(y<1911)y+=1911;
+    const ds=y+'-'+String(dp[1]).padStart(2,'0')+'-'+String(dp[2]).padStart(2,'0');
+    const nums=parts.slice(1,6).map(Number);
+    if(nums.some(x=>!isFinite(x)))return;
+    rows.push({d:ds,o:nums[0],h:nums[1],l:nums[2],c:nums[3],v:nums[4]});
+  });
+  rows.sort((a,b)=>a.d<b.d?-1:1);
+  const s={d:[],o:[],h:[],l:[],c:[],v:[]};
+  rows.forEach(r=>{s.d.push(r.d);s.o.push(r.o);s.h.push(r.h);s.l.push(r.l);s.c.push(r.c);s.v.push(r.v);});
+  return s;
+}
+function manualImport(code){
+  const ta=$('#manualTa');if(!ta)return;
+  const s=parseManual(ta.value);
+  if(s.c.length<60){toast('有效資料不足 60 筆，請檢查格式');return;}
+  const e=list.find(x=>x.code===code);if(!e)return;
+  putSeries(code,s);applySummary(e);
+  if(e.addPrice==null){e.addPrice=e.close;e.addScore=e.score;}
+  e.updatedAt=Date.now();saveList();toast('已匯入 '+s.c.length+' 筆資料');renderDetail();
+}
+
+function normW(){const sw=COMPS.reduce((a,c)=>a+settings.w[c.k],0)||1;const o={};COMPS.forEach(c=>o[c.k]=settings.w[c.k]/sw);return o;}
+
+function renderDetail(){
+  const e=list.find(x=>x.code===ui.detail);
+  if(!e){showList();return;}
+  const el=$('#detailView');
+  const s=getSeries(e.code);
+  const pend=ui.pendingDel===e.code;
+  let h='<div class="dtop"><button class="ghost" type="button" data-act="back">← 返回</button><div class="row"><button class="ghost" type="button" data-act="refreshOne" '+(ui.busy?'disabled':'')+'>'+(ui.busy?'更新中…':'↻ 更新')+'</button><button class="ghost '+(pend?'danger':'')+'" type="button" data-act="detDel">'+(pend?'確定刪除':'刪除')+'</button></div></div>';
+  if(!s||s.c.length<60){
+    h+='<div class="card"><input id="nameIn" class="nameIn" value="'+esc(e.name)+'"><div class="sub">'+esc(e.code)+'</div>'
+     +'<div class="empty">'+(s?'歷史資料不足 60 筆，無法計算過熱分數。':'尚無歷史資料。')+'<br>可按右上「更新」重新抓取，或使用下方手動貼入。</div></div>'+manualPanel(e.code);
+    el.innerHTML=h;return;
+  }
+  const n=s.c.length,i=n-1;
+  const st=settings;
+  const ind=computeInd(s,st);
+  const res=scoreAt(ind,i,st);
+  const ch=chgOf(e),cls=ch==null?'flat':ch>0?'up':ch<0?'down':'flat';
+  const z=res?zoneOf(res.total):null;
+  const w=normW();
+
+  h+='<div class="card"><div class="dhead"><div><input id="nameIn" class="nameIn" value="'+esc(e.name)+'">'
+   +'<div class="sub">'+esc(e.code)+(e.market?' · '+(e.market==='TWO'?'上櫃':'上市'):'')+' · 資料至 '+esc(s.d[i])+(e.intraday?' <span class="badge">盤中・量能未完整</span>':'')+'</div>'
+   +'<div style="margin-top:8px"><span class="bigprice">'+fmt(s.c[i])+'</span> <span class="'+cls+'" style="font-weight:600">'+(ch==null?'':(ch>0?'▲ ':ch<0?'▼ ':'')+Math.abs(s.c[i]-s.c[i-1]).toFixed(2)+'（'+Math.abs(ch).toFixed(2)+'%）')+'</span></div></div>';
+  if(res){
+    h+='<div class="heatbox" style="--c:'+z.color+'"><div class="heatnum" style="color:'+z.color+'">'+res.total.toFixed(1)+'</div><div class="heatzone" style="color:'+z.color+'">'+z.name+'</div><div class="sub">過熱分數 / 100</div></div></div>';
+    h+='<div class="track">'+ZONES.map((zz,k)=>'<i style="width:'+(Math.min(zz.max,100)-(k?ZONES[k-1].max:0))+'%;background:'+zz.color+'"></i>').join('')+'<span class="marker" style="left:'+clamp(res.total,0,100)+'%"></span></div>'
+      +'<div class="scale"><span>0</span><span>30</span><span>50</span><span>65</span><span>80</span><span>100</span></div>'
+      +'<p class="note" style="margin-top:10px">'+z.desc+(res.total>=st.hot?' <b style="color:#ef4444">（已達你設定的提醒門檻 '+st.hot+'）</b>':'')+'</p>';
+    if(e.addPrice!=null){
+      const gp=(s.c[i]-e.addPrice)/e.addPrice*100;
+      h+='<p class="note">加入時：'+fmt(e.addPrice)+(e.addScore!=null?'（過熱 '+e.addScore.toFixed(0)+'）':'')+' → 現在 '+fmt(s.c[i])+'（過熱 '+res.total.toFixed(0)+'），加入後 <span class="'+(gp>0?'up':gp<0?'down':'flat')+'">'+(gp>0?'+':'')+gp.toFixed(2)+'%</span></p>';
+    }
+  }else{
+    h+='</div><p class="note">目前資料不足以計算（需有足夠的歷史資料暖機）。</p>';
+  }
+  h+='</div>';
+
+  if(res){
+    /* 貢獻堆疊 */
+    h+='<div class="card"><p class="sec">分數組成</p><div class="contrib">'
+      +COMPS.map(c=>'<i style="width:'+(w[c.k]*res.comps[c.k].score).toFixed(2)+'%;background:'+c.color+'" title="'+c.name+'"></i>').join('')+'</div>'
+      +'<div class="legend">'+COMPS.map(c=>'<span><em style="background:'+c.color+'"></em>'+c.name+' '+(w[c.k]*res.comps[c.k].score).toFixed(1)+'</span>').join('')+'</div>'
+      +'<p class="note">過熱分數 = Σ（指標分數 × 權重）。條的總長度即為分數。</p></div>';
+
+    /* 各指標細項 */
+    const wm=winInfo(ind.macdSeries,i,st.win),wb=winInfo(ind.bias,i,st.win),wv=winInfo(ind.vs,i,st.win);
+    const lots=x=>fmt(x/1000,0);
+    const details={
+      macd:[['DIF（快線）',fmt(ind.dif[i],3)],['DEA（慢線）',fmt(ind.dea[i],3)],['OSC（柱狀）',fmt(ind.osc[i],3)],['採用指標',st.macdSrc==='osc'?'OSC':'DIF'],['近'+wm.n+'日最低',fmt(wm.min,3)],['近'+wm.n+'日最高',fmt(wm.max,3)]],
+      rsi:[['RSI(14)',fmt(ind.rsi[i],1)],['超買線 70',ind.rsi[i]>=70?'已超過':'未達'],['前日 RSI',fmt(ind.rsi[i-1],1)]],
+      kd:[['K 值',fmt(ind.K[i],1)],['D 值',fmt(ind.D[i],1)],['RSV',fmt(ind.R[i],1)],['採用',st.kdSrc==='avg'?'(K+D)/2':'K 值'],['K−D',fmt(ind.K[i]-ind.D[i],1)]],
+      bias:[['MA'+st.biasN,fmt(ind.maB[i])],['乖離率',fmt(ind.bias[i],2)+'%'],['近'+wb.n+'日最低',fmt(wb.min,2)+'%'],['近'+wb.n+'日最高',fmt(wb.max,2)+'%']],
+      vol:[['今日量（張）',lots(s.v[i])],[st.volN>1?st.volN+'日均量（張）':'採用量（張）',lots(ind.vs[i])],['20日均量（張）',lots(ind.vma20[i])],['量比（今日/20日均）',isFinite(ind.vma20[i])&&ind.vma20[i]>0?fmt(s.v[i]/ind.vma20[i],2)+'x':'—'],['近'+wv.n+'日最大（張）',lots(wv.max)]]
+    };
+    const explain={
+      macd:p=>'高於自身近 '+wm.n+' 個交易日中約 '+p+'% 的紀錄',
+      rsi:p=>'RSI 本身即為 0～100 的強弱分數，70 以上通常視為偏強／超買',
+      kd:p=>'K 值（0～100）越高代表近 9 日收盤越靠近區間高點',
+      bias:p=>'高於自身近 '+wb.n+' 個交易日中約 '+p+'% 的紀錄（股價離 MA'+st.biasN+' 越遠越高）',
+      vol:p=>'高於自身近 '+wv.n+' 個交易日中約 '+p+'% 的紀錄'
+    };
+    h+='<div class="card"><p class="sec">指標細項</p>';
+    COMPS.forEach(c=>{
+      const r=res.comps[c.k],zc=zoneOf(r.score);
+      h+='<div class="comp"><div class="comp-h"><b>'+c.name+'</b><span><span class="comp-sc" style="color:'+zc.color+'">'+r.score.toFixed(1)+'</span> <span class="comp-w">× '+(w[c.k]*100).toFixed(0)+'% = '+(w[c.k]*r.score).toFixed(1)+'</span></span></div>'
+       +'<div class="sbar"><i style="width:'+clamp(r.score,0,100)+'%;background:'+zc.color+'"></i></div>'
+       +'<div class="note" style="margin:0">'+explain[c.k](Math.round(r.score))+'</div>'
+       +'<div class="grid">'+details[c.k].map(d=>'<div>'+d[0]+'<b>'+d[1]+'</b></div>').join('')+'</div></div>';
+    });
+    if(wm.n<st.win)h+='<p class="note">⚠ 可用樣本僅 '+wm.n+' 日（少於設定的 '+st.win+' 日），百分位僅供參考。</p>';
+    h+='</div>';
+
+    /* 圖表 */
+    h+='<div class="card"><p class="sec">走勢與過熱分數</p><div class="tabs">'
+      +[60,120,250].map(r=>'<span class="chip '+(ui.range===r?'on':'')+'" data-act="range" data-r="'+r+'">近'+r+'日</span>').join('')+'</div>'
+      +'<div class="chartbox" id="chartbox"></div>'
+      +'<div class="lg"><span><em style="background:var(--text)"></em>收盤</span><span><em style="background:#f59e0b"></em>MA20</span><span><em style="background:#8b5cf6"></em>MA60</span><span><em style="background:#ef4444"></em>過熱分數</span></div></div>';
+  }
+
+  /* 備註 + 手動資料 */
+  h+='<div class="card"><p class="sec">備註</p><textarea id="noteTa" placeholder="進場理由、觀察重點、目標價…">'+esc(e.note||'')+'</textarea></div>';
+  h+=manualPanel(e.code);
+  el.innerHTML=h;
+  if(res)drawChart(s,ind);
+}
+
+function drawChart(s,ind){
+  const box=$('#chartbox');if(!box)return;
+  const st=settings,n=s.c.length,m=Math.min(ui.range,n),a=n-m;
+  const W=700,Hp=200,Hh=110,gap=28,padL=48,padR=10,padT=10,H=padT+Hp+gap+Hh+22;
+  const x=i=>padL+(i-a)*(W-padL-padR)/Math.max(1,m-1);
+  let lo=Infinity,hi=-Infinity;
+  for(let i=a;i<n;i++){[s.c[i],ind.ma20[i],ind.ma60[i]].forEach(v=>{if(isFinite(v)){if(v<lo)lo=v;if(v>hi)hi=v;}});}
+  const pad=(hi-lo)*0.05||1;lo-=pad;hi+=pad;
+  const yp=v=>padT+(hi-v)/(hi-lo)*Hp;
+  const y0=padT+Hp+gap,yh=v=>y0+(100-v)/100*Hh;
+  const path=(arr,yf)=>{let d='',pen=false;for(let i=a;i<n;i++){const v=arr[i];if(!isFinite(v)){pen=false;continue;}d+=(pen?'L':'M')+x(i).toFixed(1)+','+yf(v).toFixed(1);pen=true;}return d;};
+  const heat=Array(n).fill(NaN);
+  for(let i=a;i<n;i++){const r=scoreAt(ind,i,st);if(r)heat[i]=r.total;}
+  let g='';
+  for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=yp(v);g+='<line class="gl" x1="'+padL+'" x2="'+(W-padR)+'" y1="'+y+'" y2="'+y+'"/><text class="tx" x="'+(padL-6)+'" y="'+(y+4)+'" text-anchor="end">'+fmt(v,v>=100?0:1)+'</text>';}
+  ZONES.forEach((zz,k)=>{const top=Math.min(zz.max,100),bot=k?ZONES[k-1].max:0;g+='<rect x="'+padL+'" y="'+yh(top)+'" width="'+(W-padL-padR)+'" height="'+(yh(bot)-yh(top))+'" fill="'+zz.color+'" opacity=".10"/>';});
+  [0,50,100].forEach(v=>{g+='<line class="gl" x1="'+padL+'" x2="'+(W-padR)+'" y1="'+yh(v)+'" y2="'+yh(v)+'"/><text class="tx" x="'+(padL-6)+'" y="'+(yh(v)+4)+'" text-anchor="end">'+v+'</text>';});
+  const hy=yh(st.hot);g+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+hy+'" y2="'+hy+'" stroke="#ef4444" stroke-dasharray="4 3" opacity=".7"/>';
+  for(let k=0;k<=3;k++){const idx=a+Math.round((m-1)*k/3);g+='<text class="tx" x="'+x(idx)+'" y="'+(H-6)+'" text-anchor="'+(k===0?'start':k===3?'end':'middle')+'">'+s.d[idx].slice(2).replace(/-/g,'/')+'</text>';}
+  g+='<path class="l-ma60" d="'+path(ind.ma60,yp)+'"/><path class="l-ma20" d="'+path(ind.ma20,yp)+'"/><path class="l-price" d="'+path(s.c,yp)+'"/><path class="l-heat" d="'+path(heat,yh)+'"/>';
+  g+='<line id="cl" class="cl" x1="0" x2="0" y1="'+padT+'" y2="'+(y0+Hh)+'" style="display:none"/>';
+  box.innerHTML='<svg class="ch" viewBox="0 0 '+W+' '+H+'" id="chsvg">'+g+'</svg><div class="tip" id="tip"></div>';
+  const svg=$('#chsvg'),cl=$('#cl'),tip=$('#tip');
+  const move=ev=>{
+    const rc=svg.getBoundingClientRect();
+    const px=(ev.clientX-rc.left)/rc.width*W;
+    const i=clamp(a+Math.round((px-padL)/(W-padL-padR)*(m-1)),a,n-1);
+    cl.setAttribute('x1',x(i));cl.setAttribute('x2',x(i));cl.style.display='';
+    tip.innerHTML=s.d[i]+'<br>收 '+fmt(s.c[i])+' · MA20 '+fmt(ind.ma20[i])+'<br>過熱 <b>'+(isFinite(heat[i])?heat[i].toFixed(1):'—')+'</b>';
+    tip.style.display='block';
+    const left=(x(i)/W)*rc.width;
+    tip.style.left=(left>rc.width/2?left-tip.offsetWidth-10:left+10)+'px';
+  };
+  svg.addEventListener('pointermove',move);
+  svg.addEventListener('pointerdown',move);
+  svg.addEventListener('pointerleave',()=>{cl.style.display='none';tip.style.display='none';});
+}
+
+/* ========== 視窗：設定 / 備份 ========== */
+function openModal(html){$('#modalBody').innerHTML=html;$('#modal').hidden=false;}
+function closeModal(){$('#modal').hidden=true;}
+function openSettings(){
+  const w=settings.w;
+  openModal('<h2>設定</h2><div class="fgrid">'
+   +COMPS.map(c=>'<div><label>'+c.name+' 權重</label><input type="number" id="w_'+c.k+'" value="'+w[c.k]+'" min="0" max="100" step="1" inputmode="decimal"></div>').join('')
+   +'<div><label>百分位視窗（交易日）</label><input type="number" id="s_win" value="'+settings.win+'" min="60" max="500" inputmode="numeric"></div>'
+   +'<div><label>乖離率均線天數</label><input type="number" id="s_biasN" value="'+settings.biasN+'" min="5" max="120" inputmode="numeric"></div>'
+   +'<div><label>量能平滑（1=當日量）</label><input type="number" id="s_volN" value="'+settings.volN+'" min="1" max="20" inputmode="numeric"></div>'
+   +'<div><label>提醒門檻（分數）</label><input type="number" id="s_hot" value="'+settings.hot+'" min="1" max="100" inputmode="numeric"></div>'
+   +'<div><label>MACD 採用</label><select id="s_macd"><option value="dif" '+(settings.macdSrc==='dif'?'selected':'')+'>DIF 快線</option><option value="osc" '+(settings.macdSrc==='osc'?'selected':'')+'>OSC 柱狀體</option></select></div>'
+   +'<div><label>KD 採用</label><select id="s_kd"><option value="k" '+(settings.kdSrc==='k'?'selected':'')+'>K 值</option><option value="avg" '+(settings.kdSrc==='avg'?'selected':'')+'>(K+D)/2</option></select></div>'
+   +'</div><p class="note">權重總和不必剛好 100，系統會自動按比例標準化。預設 30/25/20/15/10。</p><div id="setMsg" class="msg err"></div>'
+   +'<div class="mact"><button type="button" data-act="resetSet">還原預設</button><button type="button" data-act="modalClose">取消</button><button class="primary" type="button" data-act="saveSet">儲存</button></div>');
+}
+function saveSettings(){
+  const num=id=>parseFloat($('#'+id).value);
+  const ns={w:{},win:Math.round(num('s_win')),biasN:Math.round(num('s_biasN')),volN:Math.round(num('s_volN')),hot:num('s_hot'),macdSrc:$('#s_macd').value,kdSrc:$('#s_kd').value};
+  let sum=0;
+  for(const c of COMPS){const v=num('w_'+c.k);if(!isFinite(v)||v<0){$('#setMsg').textContent='權重必須是大於等於 0 的數字';return;}ns.w[c.k]=v;sum+=v;}
+  if(sum<=0){$('#setMsg').textContent='權重總和必須大於 0';return;}
+  if(!(ns.win>=60&&ns.win<=500)){$('#setMsg').textContent='百分位視窗請設在 60～500';return;}
+  if(!(ns.biasN>=5&&ns.biasN<=120)){$('#setMsg').textContent='乖離率均線請設在 5～120';return;}
+  if(!(ns.volN>=1&&ns.volN<=20)){$('#setMsg').textContent='量能平滑請設在 1～20';return;}
+  if(!(ns.hot>=1&&ns.hot<=100)){$('#setMsg').textContent='提醒門檻請設在 1～100';return;}
+  settings=ns;store.set('oh_settings',settings);recomputeAll();closeModal();toast('設定已儲存並重新計算');
+  ui.detail?renderDetail():renderList();
+}
+function openData(){
+  const payload={version:1,exportedAt:new Date().toISOString(),settings,list};
+  openModal('<h2>備份與還原</h2><p class="note">匯出的是候選清單與設定（不含歷史價量）。匯入後請按「全部更新」重新抓取資料。</p>'
+   +'<textarea id="dataTa" style="min-height:160px;font-size:12px">'+esc(JSON.stringify(payload))+'</textarea><div id="dataMsg" class="msg"></div>'
+   +'<div class="mact"><button type="button" data-act="modalClose">關閉</button><button type="button" data-act="expCopy">複製內容</button><button class="primary" type="button" data-act="impRun">匯入（合併）</button></div>');
+}
+function importData(){
+  const ta=$('#dataTa'),msg=$('#dataMsg');
+  try{
+    const j=JSON.parse(ta.value);
+    if(!j||!Array.isArray(j.list))throw new Error('format');
+    let add=0;
+    j.list.forEach(e=>{
+      if(!e||!/^[0-9A-Za-z]{4,8}$/.test(String(e.code||'')))return;
+      if(list.some(x=>x.code===e.code))return;
+      list.push({code:String(e.code).toUpperCase(),name:String(e.name||e.code),market:e.market==='TW'||e.market==='TWO'?e.market:null,addedAt:Number(e.addedAt)||Date.now(),addPrice:isFinite(e.addPrice)?e.addPrice:null,addScore:isFinite(e.addScore)?e.addScore:null,note:String(e.note||''),updatedAt:0,score:null,comps:null});
+      add++;
+    });
+    if(j.settings&&j.settings.w){settings=Object.assign({},DEF,j.settings,{w:Object.assign({},DEF.w,j.settings.w)});store.set('oh_settings',settings);}
+    list.forEach(applySummary);saveList();renderList();
+    msg.className='msg';msg.textContent='已匯入 '+add+' 檔新股票。請關閉視窗後按「全部更新」。';
+  }catch(err){msg.className='msg err';msg.textContent='內容格式不正確，請貼上先前匯出的完整內容。';}
+}
+function copyData(){
+  const ta=$('#dataTa');
+  const done=()=>{$('#dataMsg').className='msg';$('#dataMsg').textContent='已複製到剪貼簿';};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();try{document.execCommand('copy');done();}catch(e){}});}
+  else{ta.select();try{document.execCommand('copy');done();}catch(e){}}
+}
+
+/* ========== 事件 ========== */
+document.addEventListener('click',ev=>{
+  const t=ev.target.closest('[data-act]');
+  if(!t){return;}
+  const act=t.dataset.act,code=t.dataset.code;
+  switch(act){
+    case 'add':addStock();break;
+    case 'addManual':addManual(code);break;
+    case 'open':openDetail(code);break;
+    case 'del':ev.stopPropagation();deleteStock(code,false);break;
+    case 'detDel':deleteStock(ui.detail,true);break;
+    case 'back':showList();break;
+    case 'refreshAll':refreshAll();break;
+    case 'refreshOne':refreshOne();break;
+    case 'filter':ui.filter=t.dataset.f;renderList();break;
+    case 'range':ui.range=parseInt(t.dataset.r,10);renderDetail();break;
+    case 'setOpen':openSettings();break;
+    case 'dataOpen':openData();break;
+    case 'modalClose':closeModal();break;
+    case 'saveSet':saveSettings();break;
+    case 'resetSet':settings=JSON.parse(JSON.stringify(DEF));store.set('oh_settings',settings);recomputeAll();closeModal();toast('已還原預設');ui.detail?renderDetail():renderList();break;
+    case 'expCopy':copyData();break;
+    case 'impRun':importData();break;
+    case 'manualImport':manualImport(code);break;
+  }
+});
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
+$('#codeIn').addEventListener('keydown',e=>{if(e.key==='Enter')addStock();});
+$('#searchIn').addEventListener('input',e=>{ui.q=e.target.value;renderList();});
+$('#sortSel').addEventListener('change',e=>{ui.sort=e.target.value;renderList();});
+document.addEventListener('input',e=>{
+  if(e.target.id==='noteTa'){const en=list.find(x=>x.code===ui.detail);if(en){en.note=e.target.value;saveList();}}
+});
+document.addEventListener('change',e=>{
+  if(e.target.id==='nameIn'){const en=list.find(x=>x.code===ui.detail);if(en){en.name=e.target.value.trim()||en.code;saveList();}}
+});
+
+/* ========== 啟動 ========== */
+list.forEach(e=>{if(e.close==null||e.score==null)applySummary(e);});
+renderList();
+})();
+</script>
+</body>
+</html>
